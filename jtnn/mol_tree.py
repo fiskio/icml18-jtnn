@@ -1,7 +1,7 @@
 import rdkit
 import rdkit.Chem as Chem
 import copy
-from chemutils import get_clique_mol, tree_decomp, get_mol, get_smiles, set_atommap, enum_assemble, decode_stereo
+from .chemutils import get_clique_mol, tree_decomp, get_mol, get_smiles, set_atommap, enum_assemble, decode_stereo
 
 def get_slots(smiles):
     mol = Chem.MolFromSmiles(smiles)
@@ -132,11 +132,11 @@ if __name__ == "__main__":
     lg.setLevel(rdkit.RDLogger.CRITICAL)
 
     cset = set()
-    for i,line in enumerate(sys.stdin):
+    for line in sys.stdin:
         smiles = line.split()[0]
         mol = MolTree(smiles)
         for c in mol.nodes:
             cset.add(c.smiles)
     for x in cset:
-        print x
+        print (x)
 

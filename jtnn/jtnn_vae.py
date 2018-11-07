@@ -167,7 +167,7 @@ class JTNNVAE(nn.Module):
         all_loss = torch.cat(all_loss).sum() / len(labels)
         return all_loss, acc * 1.0 / len(labels)
 
-    def reconstruct(self, smiles, prob_decode=False, deterimistic=False, isomericSmiles=True):
+    def reconstruct(self, smiles, prob_decode=False):
         mol_tree = MolTree(smiles)
         mol_tree.recover()
         _,tree_vec,mol_vec = self.encode([mol_tree])
@@ -204,21 +204,21 @@ class JTNNVAE(nn.Module):
                 all_smiles.append(new_smiles)
         return all_smiles
 
-    def sample_prior(self, prob_decode=False, isomericSmiles=True):
+    def sample_prior(self, prob_decode=False):
         tree_vec = create_var(torch.randn(1, int(self.latent_size / 2)), False, use_cuda=self.use_cuda)
         mol_vec = create_var(torch.randn(1, int(self.latent_size / 2)), False, use_cuda=self.use_cuda)
-        return self.decode(tree_vec, mol_vec, prob_decode, isomericSmiles=isomericSmiles)
+        return self.decode(tree_vec, mol_vec, prob_decode)
 
-    def sample_eval(self, isomericSmiles=True):
+    def sample_eval(self):
         tree_vec = create_var(torch.randn(1, int(self.latent_size / 2)), False, use_cuda=self.use_cuda)
         mol_vec = create_var(torch.randn(1, int(self.latent_size / 2)), False, use_cuda=self.use_cuda)
         all_smiles = []
         for i in range(100):
-            s = self.decode(tree_vec, mol_vec, prob_decode=True, isomericSmiles=isomericSmiles)
+            s = self.decode(tree_vec, mol_vec, prob_decode=True)
             all_smiles.append(s)
         return all_smiles
     
-    def decode(self, tree_vec, mol_vec, prob_decode, isomericSmiles=True):
+    def decode(self, tree_vec, mol_vec, prob_decode):
         pred_root,pred_nodes = self.decoder.decode(tree_vec, prob_decode)
 
         #Mark nid & is_leaf & atommap
