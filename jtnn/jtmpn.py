@@ -136,5 +136,6 @@ class JTMPN(nn.Module):
             mol_vecs.append(mol_vec)
 
         mol_vecs = torch.stack(mol_vecs, dim=0)
+        print "hello"
         return mol_vecs
 

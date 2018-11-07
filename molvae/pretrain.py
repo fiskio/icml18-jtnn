@@ -94,7 +94,7 @@ for epoch in range(MAX_EPOCH):
             assm_acc = assm_acc / PRINT_ITER * 100
             steo_acc = steo_acc / PRINT_ITER * 100
 
-            print("KL: %.1f, Word: %.2f, Topo: %.2f, Assm: %.2f, Steo: %.2f" % (kl_div, word_acc, topo_acc, assm_acc, steo_acc))
+            print("ep: %2d it: %2d KL: %.1f, Word: %.2f, Topo: %.2f, Assm: %.2f, Steo: %.2f" % (epoch, it, kl_div, word_acc, topo_acc, assm_acc, steo_acc))
             word_acc,topo_acc,assm_acc,steo_acc = 0,0,0,0
             sys.stdout.flush()
 
