@@ -1,3 +1,4 @@
+import os 
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -23,8 +24,20 @@ parser.add_option("-b", "--batch", dest="batch_size", default=40)
 parser.add_option("-w", "--hidden", dest="hidden_size", default=200)
 parser.add_option("-l", "--latent", dest="latent_size", default=56)
 parser.add_option("-d", "--depth", dest="depth", default=3)
+parser.add_option("-n", "--num_workers", dest="num_workers", default=4)
+parser.add_option("-p", "--print_iter", dest="print_iter", default=20)
+parser.add_option("-q", "--lr", dest="lr", default=1e-3)
+
+parser.add_option("--use_kl", dest="use_kl", default=0)
+
+parser.add_option('--cuda', dest="cuda", default=True,
+                    help='Enables CUDA training')
+
 opts,args = parser.parse_args()
-   
+# opts.cuda = not opts.cuda and torch.cuda.is_available()
+
+os.makedirs(opts.save_path, exist_ok=True)
+
 vocab = [x.strip("\r\n ") for x in open(opts.vocab_path)] 
 vocab = Vocab(vocab)
 
@@ -32,8 +45,12 @@ batch_size = int(opts.batch_size)
 hidden_size = int(opts.hidden_size)
 latent_size = int(opts.latent_size)
 depth = int(opts.depth)
+opts.use_kl = bool(int(opts.use_kl))
+opts.num_workers = int(opts.num_workers)
+lr = float(opts.lr)
 
-model = JTNNVAE(vocab, hidden_size, latent_size, depth)
+print ("opts={}".format(opts))
+model = JTNNVAE(vocab, hidden_size, latent_size, depth, use_cuda=opts.cuda, use_kl=opts.use_kl)
 
 for param in model.parameters():
     if param.dim() == 1:
@@ -41,23 +58,28 @@ for param in model.parameters():
     else:
         nn.init.xavier_normal(param)
 
-model = model.cuda()
-print "Model #Params: %dK" % (sum([x.nelement() for x in model.parameters()]) / 1000,)
+print ("opts.cuda", opts.cuda)
 
-optimizer = optim.Adam(model.parameters(), lr=1e-3)
+if opts.cuda:
+    model = model.cuda()
+
+
+
+print ("Model #Params: %dK" % (sum([x.nelement() for x in model.parameters()]) / 1000,))
+
+optimizer = optim.Adam(model.parameters(), lr=lr)
 scheduler = lr_scheduler.ExponentialLR(optimizer, 0.9)
 scheduler.step()
 
 dataset = MoleculeDataset(opts.train_path)
 
-MAX_EPOCH = 3
-PRINT_ITER = 20
+MAX_EPOCH = 10
+PRINT_ITER = int(opts.print_iter)
 
-for epoch in xrange(MAX_EPOCH):
-    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=4, collate_fn=lambda x:x, drop_last=True)
-
-    word_acc,topo_acc,assm_acc,steo_acc = 0,0,0,0
-
+for epoch in range(MAX_EPOCH):
+    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False,
+                            num_workers=opts.num_workers, collate_fn=lambda x:x, drop_last=True)
+    word_acc, topo_acc, assm_acc, steo_acc = 0,0,0,0
     for it, batch in enumerate(dataloader):
         for mol_tree in batch:
             for node in mol_tree.nodes:

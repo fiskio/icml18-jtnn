@@ -1,3 +1,8 @@
+import os 
+from joblib import Parallel, delayed
+
+import numpy as np 
+
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
@@ -21,7 +26,13 @@ parser.add_option("-m", "--model", dest="model_path")
 parser.add_option("-w", "--hidden", dest="hidden_size", default=200)
 parser.add_option("-l", "--latent", dest="latent_size", default=56)
 parser.add_option("-d", "--depth", dest="depth", default=3)
+
+parser.add_option('--no-cuda', dest="no_cuda", default=False,
+                    help='Enables CUDA training')
+
 opts,args = parser.parse_args()
+print ("opts={}".format(opts))
+opts.cuda = not opts.no_cuda and torch.cuda.is_available()
    
 vocab = [x.strip("\r\n ") for x in open(opts.vocab_path)] 
 vocab = Vocab(vocab)
