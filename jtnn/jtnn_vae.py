@@ -1,18 +1,18 @@
-import torch
-import torch.nn as nn
-from mol_tree import Vocab, MolTree
-from nnutils import create_var
-from jtnn_enc import JTNNEncoder
-from jtnn_dec import JTNNDecoder
-from mpn import MPN, mol2graph
-from jtmpn import JTMPN
-
-from chemutils import enum_assemble, set_atommap, copy_edit_mol, attach_mols, atom_equal, decode_stereo
 import rdkit
 import rdkit.Chem as Chem
 from rdkit import DataStructs
 from rdkit.Chem import AllChem
 import copy, math
+import torch
+import torch.nn as nn
+from .mol_tree import Vocab, MolTree
+from .nnutils import create_var
+from .jtnn_enc import JTNNEncoder
+from .jtnn_dec import JTNNDecoder
+from .mpn import MPN, mol2graph
+from .jtmpn import JTMPN
+
+from .chemutils import enum_assemble, set_atommap, copy_edit_mol, attach_mols, atom_equal, decode_stereo
 
 def set_batch_nodeID(mol_batch, vocab):
     tot = 0
@@ -23,24 +23,25 @@ def set_batch_nodeID(mol_batch, vocab):
             tot += 1
 
 class JTNNVAE(nn.Module):
-
-    def __init__(self, vocab, hidden_size, latent_size, depth):
+    def __init__(self, vocab, hidden_size, latent_size, depth, use_cuda=False, use_kl=True):
         super(JTNNVAE, self).__init__()
         self.vocab = vocab
-        self.hidden_size = hidden_size
-        self.latent_size = latent_size
+        self.hidden_size = int(hidden_size)
+        self.latent_size = int(latent_size)
         self.depth = depth
+        self.use_cuda = use_cuda
 
-        self.embedding = nn.Embedding(vocab.size(), hidden_size)
-        self.jtnn = JTNNEncoder(vocab, hidden_size, self.embedding)
-        self.jtmpn = JTMPN(hidden_size, depth)
-        self.mpn = MPN(hidden_size, depth)
-        self.decoder = JTNNDecoder(vocab, hidden_size, latent_size / 2, self.embedding)
+        self.embedding = nn.Embedding(vocab.size(), self.hidden_size)
+        self.jtnn = JTNNEncoder(vocab, self.hidden_size, self.embedding, use_cuda=self.use_cuda)
+        self.jtmpn = JTMPN(self.hidden_size, depth, use_cuda=self.use_cuda)
+        self.mpn = MPN(self.hidden_size, depth, cuda=self.use_cuda)
+        self.decoder = JTNNDecoder(vocab, self.hidden_size,
+                                   latent_size / 2, self.embedding, use_cuda=self.use_cuda)
 
-        self.T_mean = nn.Linear(hidden_size, latent_size / 2)
-        self.T_var = nn.Linear(hidden_size, latent_size / 2)
-        self.G_mean = nn.Linear(hidden_size, latent_size / 2)
-        self.G_var = nn.Linear(hidden_size, latent_size / 2)
+        self.T_mean = nn.Linear(self.hidden_size, int(latent_size / 2))
+        self.T_var = nn.Linear(self.hidden_size, int(latent_size / 2))
+        self.G_mean = nn.Linear(self.hidden_size, int(latent_size / 2))
+        self.G_var = nn.Linear(self.hidden_size, int(latent_size / 2))
         
         self.assm_loss = nn.CrossEntropyLoss(size_average=False)
         self.stereo_loss = nn.CrossEntropyLoss(size_average=False)
@@ -105,11 +106,11 @@ class JTNNVAE(nn.Module):
         cand_vec = self.jtmpn(cands, tree_mess)
         cand_vec = self.G_mean(cand_vec)
 
-        batch_idx = create_var(torch.LongTensor(batch_idx))
+        batch_idx = create_var(torch.LongTensor(batch_idx), use_cuda=self.use_cuda)
         mol_vec = mol_vec.index_select(0, batch_idx)
 
-        mol_vec = mol_vec.view(-1, 1, self.latent_size / 2)
-        cand_vec = cand_vec.view(-1, self.latent_size / 2, 1)
+        mol_vec = mol_vec.view(-1, 1, int(self.latent_size / 2))
+        cand_vec = cand_vec.view(-1, int(self.latent_size / 2), 1)
         scores = torch.bmm(mol_vec, cand_vec).squeeze()
         
         cnt,tot,acc = 0,0,0
@@ -126,11 +127,10 @@ class JTNNVAE(nn.Module):
                 if cur_score.data[label] >= cur_score.max().data[0]:
                     acc += 1
 
-                label = create_var(torch.LongTensor([label]))
+                label = create_var(torch.LongTensor([label]), use_cuda=self.use_cuda)
                 all_loss.append( self.assm_loss(cur_score.view(1,-1), label) )
         
-        #all_loss = torch.stack(all_loss).sum() / len(mol_batch)
-        all_loss = sum(all_loss) / len(mol_batch)
+        all_loss = torch.cat(all_loss).sum() / len(mol_batch)
         return all_loss, acc * 1.0 / cnt
 
     def stereo(self, mol_batch, mol_vec):
@@ -146,9 +146,10 @@ class JTNNVAE(nn.Module):
             labels.append( (cands.index(mol_tree.smiles3D), len(cands)) )
 
         if len(labels) == 0: 
-            return create_var(torch.zeros(1)), 1.0
+            v = create_var(torch.zeros(1), use_cuda=self.use_cuda)
+            return v, 1.0
 
-        batch_idx = create_var(torch.LongTensor(batch_idx))
+        batch_idx = create_var(torch.LongTensor(batch_idx), use_cuda=self.use_cuda)
         stereo_cands = self.mpn(mol2graph(stereo_cands))
         stereo_cands = self.G_mean(stereo_cands)
         stereo_labels = mol_vec.index_select(0, batch_idx)
@@ -160,14 +161,13 @@ class JTNNVAE(nn.Module):
             cur_scores = scores.narrow(0, st, le)
             if cur_scores.data[label] >= cur_scores.max().data[0]: 
                 acc += 1
-            label = create_var(torch.LongTensor([label]))
+            label = create_var(torch.LongTensor([label]), use_cuda=self.use_cuda)
             all_loss.append( self.stereo_loss(cur_scores.view(1,-1), label) )
             st += le
-        #all_loss = torch.cat(all_loss).sum() / len(labels)
-        all_loss = sum(all_loss) / len(labels)
+        all_loss = torch.cat(all_loss).sum() / len(labels)
         return all_loss, acc * 1.0 / len(labels)
 
-    def reconstruct(self, smiles, prob_decode=False):
+    def reconstruct(self, smiles, prob_decode=False, deterimistic=False, isomericSmiles=True):
         mol_tree = MolTree(smiles)
         mol_tree.recover()
         _,tree_vec,mol_vec = self.encode([mol_tree])
@@ -194,31 +194,31 @@ class JTNNVAE(nn.Module):
         mol_log_var = -torch.abs(self.G_var(mol_vec)) #Following Mueller et al.
         
         all_smiles = []
-        for i in xrange(10):
-            epsilon = create_var(torch.randn(1, self.latent_size / 2), False)
+        for i in range(10):
+            epsilon = create_var(torch.randn(1, int(self.latent_size / 2)), False, use_cuda=self.use_cuda)
             tree_vec = tree_mean + torch.exp(tree_log_var / 2) * epsilon
-            epsilon = create_var(torch.randn(1, self.latent_size / 2), False)
+            epsilon = create_var(torch.randn(1, int(self.latent_size / 2)), False, use_cuda=self.use_cuda)
             mol_vec = mol_mean + torch.exp(mol_log_var / 2) * epsilon
-            for j in xrange(10):
+            for j in range(10):
                 new_smiles = self.decode(tree_vec, mol_vec, prob_decode=True)
                 all_smiles.append(new_smiles)
         return all_smiles
 
-    def sample_prior(self, prob_decode=False):
-        tree_vec = create_var(torch.randn(1, self.latent_size / 2), False)
-        mol_vec = create_var(torch.randn(1, self.latent_size / 2), False)
-        return self.decode(tree_vec, mol_vec, prob_decode)
+    def sample_prior(self, prob_decode=False, isomericSmiles=True):
+        tree_vec = create_var(torch.randn(1, int(self.latent_size / 2)), False, use_cuda=self.use_cuda)
+        mol_vec = create_var(torch.randn(1, int(self.latent_size / 2)), False, use_cuda=self.use_cuda)
+        return self.decode(tree_vec, mol_vec, prob_decode, isomericSmiles=isomericSmiles)
 
-    def sample_eval(self):
-        tree_vec = create_var(torch.randn(1, self.latent_size / 2), False)
-        mol_vec = create_var(torch.randn(1, self.latent_size / 2), False)
+    def sample_eval(self, isomericSmiles=True):
+        tree_vec = create_var(torch.randn(1, int(self.latent_size / 2)), False, use_cuda=self.use_cuda)
+        mol_vec = create_var(torch.randn(1, int(self.latent_size / 2)), False, use_cuda=self.use_cuda)
         all_smiles = []
-        for i in xrange(100):
-            s = self.decode(tree_vec, mol_vec, prob_decode=True)
+        for i in range(100):
+            s = self.decode(tree_vec, mol_vec, prob_decode=True, isomericSmiles=isomericSmiles)
             all_smiles.append(s)
         return all_smiles
     
-    def decode(self, tree_vec, mol_vec, prob_decode):
+    def decode(self, tree_vec, mol_vec, prob_decode, isomericSmiles=True):
         pred_root,pred_nodes = self.decoder.decode(tree_vec, prob_decode)
 
         #Mark nid & is_leaf & atommap
@@ -283,7 +283,7 @@ class JTNNVAE(nn.Module):
             _,cand_idx = torch.sort(scores, descending=True)
 
         backup_mol = Chem.RWMol(cur_mol)
-        for i in xrange(cand_idx.numel()):
+        for i in range(cand_idx.numel()):
             cur_mol = Chem.RWMol(backup_mol)
             pred_amap = cand_amap[cand_idx[i].data[0]]
             new_global_amap = copy.deepcopy(global_amap)
