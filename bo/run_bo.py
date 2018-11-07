@@ -50,7 +50,7 @@ random_seed = int(opts.random_seed)
 
 model = JTNNVAE(vocab, hidden_size, latent_size, depth)
 model.load_state_dict(torch.load(opts.model_path))
-model = model.cuda()
+model = model.use_cuda()
 
 # We load the random seed
 np.random.seed(random_seed)
@@ -102,7 +102,7 @@ while iteration < 5:
     next_inputs = sgp.batched_greedy_ei(60, np.min(X_train, 0), np.max(X_train, 0))
     valid_smiles = []
     new_features = []
-    for i in xrange(60):
+    for i in range(60):
         all_vec = next_inputs[i].reshape((1,-1))
         tree_vec,mol_vec = np.hsplit(all_vec, 2)
         tree_vec = create_var(torch.from_numpy(tree_vec).float())
