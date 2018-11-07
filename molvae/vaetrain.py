@@ -26,8 +26,9 @@ parser.add_option("-q", "--lr", dest="lr", default=1e-3)
 
 
 opts,args = parser.parse_args()
-print ("opts={}".format(opts))
 opts.use_cuda = torch.cuda.is_available()
+print ("opts={}".format(opts))
+
 os.makedirs(opts.save_path, exist_ok=True)
 
 vocab = [x.strip("\r\n ") for x in open(opts.vocab_path)] 
@@ -53,7 +54,7 @@ else:
         else:
             nn.init.xavier_normal(param)
 
-if opts.cuda: model = model.use_cuda()
+if opts.cuda: model = model.cuda()
 
 print ("Model #Params: %dK" % (sum([x.nelement() for x in model.parameters()]) / 1000,))
 

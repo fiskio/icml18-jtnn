@@ -26,8 +26,8 @@ class JTNNVAE(nn.Module):
     def __init__(self, vocab, hidden_size, latent_size, depth, use_cuda=False, use_kl=True):
         super(JTNNVAE, self).__init__()
         self.vocab = vocab
-        self.hidden_size = int(hidden_size)
-        self.latent_size = int(latent_size)
+        self.hidden_size = hidden_size
+        self.latent_size = latent_size
         self.depth = depth
         self.use_cuda = use_cuda
 

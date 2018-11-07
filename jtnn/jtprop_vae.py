@@ -27,8 +27,8 @@ class JTPropVAE(nn.Module):
     def __init__(self, vocab, hidden_size, latent_size, depth, use_cuda=False):
         super(JTPropVAE, self).__init__()
         self.vocab = vocab
-        self.hidden_size = int(hidden_size)
-        self.latent_size = int(latent_size)
+        self.hidden_size = hidden_size
+        self.latent_size = latent_size
         self.depth = depth
 
         self.embedding = nn.Embedding(vocab.size(), hidden_size)
@@ -192,8 +192,8 @@ class JTPropVAE(nn.Module):
         return self.decode(tree_vec, mol_vec, prob_decode)
 
     def sample_prior(self, prob_decode=False):
-        tree_vec = create_var(torch.randn(1, self.latent_size / 2)), False, use_cuda=self.use_cuda)
-        mol_vec = create_var(torch.randn(1, self.latent_size // 2)), False, use_cuda=self.use_cuda)
+        tree_vec = create_var(torch.randn(1, self.latent_size // 2), False, use_cuda=self.use_cuda)
+        mol_vec = create_var(torch.randn(1, self.latent_size // 2), False, use_cuda=self.use_cuda)
         return self.decode(tree_vec, mol_vec, prob_decode)
 
     def optimize(self, smiles, sim_cutoff, lr=2.0, num_iter=20):

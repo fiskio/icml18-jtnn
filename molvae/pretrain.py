@@ -52,8 +52,7 @@ for param in model.parameters():
 
 print ("opts.use_cuda", opts.use_cuda)
 
-if opts.use_cuda:
-    model = model.cuda()
+if opts.use_cuda: model = model.cuda()
 
 
 

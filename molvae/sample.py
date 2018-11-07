@@ -24,7 +24,8 @@ parser.add_option("-w", "--hidden", dest="hidden_size", default=200)
 parser.add_option("-l", "--latent", dest="latent_size", default=56)
 parser.add_option("-d", "--depth", dest="depth", default=3)
 opts,args = parser.parse_args()
-   
+opts.cuda = torch.cuda.is_available()
+
 vocab = [x.strip("\r\n ") for x in open(opts.vocab_path)] 
 vocab = Vocab(vocab)
 
@@ -38,8 +39,8 @@ load_dict = torch.load(opts.model_path)
 missing = {k: v for k, v in model.state_dict().items() if k not in load_dict}
 load_dict.update(missing) 
 model.load_state_dict(load_dict)
-model = model.cuda()
+if opts.cuda: model = model.cuda()
 
 torch.manual_seed(0)
-for i in xrange(nsample):
-    print model.sample_prior(prob_decode=True)
+for i in range(nsample):
+    print (model.sample_prior(prob_decode=True))

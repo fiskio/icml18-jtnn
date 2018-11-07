@@ -21,8 +21,7 @@ class JTNNDecoder(nn.Module):
             self.embedding = nn.Embedding(self.vocab_size, hidden_size)
         else:
             self.embedding = embedding
-        
-        latent_size = int (latent_size )
+
         #GRU Weights
         self.W_z = nn.Linear(2 * hidden_size, hidden_size)
         self.U_r = nn.Linear(hidden_size, hidden_size, bias=False)

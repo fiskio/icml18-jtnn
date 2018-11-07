@@ -26,6 +26,8 @@ parser.add_option("-d", "--depth", dest="depth", default=3)
 parser.add_option("-z", "--beta", dest="beta", default=1.0)
 parser.add_option("-q", "--lr", dest="lr", default=1e-3)
 opts,args = parser.parse_args()
+opts.use_cuda = torch.cuda.is_available()
+
    
 vocab = [x.strip("\r\n ") for x in open(opts.vocab_path)] 
 vocab = Vocab(vocab)
@@ -48,7 +50,7 @@ else:
         else:
             nn.init.xavier_normal(param)
 
-model = model.cuda()
+if opts.cuda: model = model.cuda()
 print ("Model #Params: %dK" % (sum([x.nelement() for x in model.parameters()]) / 1000,))
 
 optimizer = optim.Adam(model.parameters(), lr=lr)

@@ -14,10 +14,10 @@ parser.add_option("-m", "--model", dest="model_path")
 parser.add_option("-w", "--hidden", dest="hidden_size", default=200)
 parser.add_option("-l", "--latent", dest="latent_size", default=56)
 parser.add_option("-d", "--depth", dest="depth", default=3)
-parser.add_option('--no-cuda', dest="use_cuda", default=False,
-                    help='Enables CUDA training')
 
 opts,args = parser.parse_args()
+opts.cuda = torch.cuda.is_available()
+
 print ("opts={}".format(opts))
 
 
@@ -32,7 +32,7 @@ depth = int(opts.depth)
 
 model = JTNNVAE(vocab, hidden_size, latent_size, depth, use_cuda=opts.use_cuda)
 model.load_state_dict(torch.load(opts.model_path))
-model = model.cuda()
+if opts.cuda: model = model.cuda()
 
 data = []
 with open(opts.test_path) as f:

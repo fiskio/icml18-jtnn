@@ -22,6 +22,8 @@ parser.add_option("-w", "--hidden", dest="hidden_size", default=200)
 parser.add_option("-l", "--latent", dest="latent_size", default=56)
 parser.add_option("-d", "--depth", dest="depth", default=3)
 opts,args = parser.parse_args()
+opts.cuda = torch.cuda.is_available()
+
    
 vocab = [x.strip("\r\n ") for x in open(opts.vocab_path)] 
 vocab = Vocab(vocab)
@@ -32,7 +34,7 @@ depth = int(opts.depth)
 
 model = JTNNVAE(vocab, hidden_size, latent_size, depth)
 model.load_state_dict(torch.load(opts.model_path))
-model = model.cuda()
+if opts.cuda: model = model.cuda()
 
 np.random.seed(0)
 x = np.random.randn(latent_size)
