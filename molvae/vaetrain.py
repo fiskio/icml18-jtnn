@@ -1,17 +1,13 @@
 import os
+import sys
+from optparse import OptionParser
+
+import rdkit
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.optim.lr_scheduler as lr_scheduler
 from torch.utils.data import DataLoader
-from torch.autograd import Variable
-
-import math, random, sys
-from optparse import OptionParser
-from collections import deque
-
-from jtnn import *
-import rdkit
 
 lg = rdkit.RDLogger.logger() 
 lg.setLevel(rdkit.RDLogger.CRITICAL)
@@ -28,12 +24,10 @@ parser.add_option("-d", "--depth", dest="depth", default=3)
 parser.add_option("-z", "--beta", dest="beta", default=1.0)
 parser.add_option("-q", "--lr", dest="lr", default=1e-3)
 
-parser.add_option('--cuda', dest="cuda", default=False,
-                    help='Enables CUDA training')
 
 opts,args = parser.parse_args()
 print ("opts={}".format(opts))
-opts.cuda = not opts.cuda and torch.cuda.is_available()
+opts.use_cuda = torch.cuda.is_available()
 os.makedirs(opts.save_path, exist_ok=True)
 
 vocab = [x.strip("\r\n ") for x in open(opts.vocab_path)] 
@@ -47,7 +41,7 @@ beta = float(opts.beta)
 lr = float(opts.lr)
 anneal = float(opts.anneal)
 
-model = JTNNVAE(vocab, hidden_size, latent_size, depth, use_cuda=opts.cuda)
+model = JTNNVAE(vocab, hidden_size, latent_size, depth, use_cuda=opts.use_cuda)
 optimizer = optim.Adam(model.parameters(), lr=lr)
 
 if opts.model_path is not None:
@@ -109,6 +103,6 @@ for epoch in range(MAX_EPOCH):
             torch.save(model.state_dict(), opts.save_path + "/model.iter-%d-%d" % (epoch, it + 1))
 
     scheduler.step()
-    print "learning rate: %.6f" % scheduler.get_lr()[0]
+    print ("learning rate: %.6f" % scheduler.get_lr()[0])
     torch.save(model.state_dict(), opts.save_path + "/model.iter-" + str(epoch))
 

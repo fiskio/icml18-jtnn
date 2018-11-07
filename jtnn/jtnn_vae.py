@@ -34,14 +34,14 @@ class JTNNVAE(nn.Module):
         self.embedding = nn.Embedding(vocab.size(), self.hidden_size)
         self.jtnn = JTNNEncoder(vocab, self.hidden_size, self.embedding, use_cuda=self.use_cuda)
         self.jtmpn = JTMPN(self.hidden_size, depth, use_cuda=self.use_cuda)
-        self.mpn = MPN(self.hidden_size, depth, cuda=self.use_cuda)
+        self.mpn = MPN(self.hidden_size, depth, use_cuda=self.use_cuda)
         self.decoder = JTNNDecoder(vocab, self.hidden_size,
                                    latent_size / 2, self.embedding, use_cuda=self.use_cuda)
 
-        self.T_mean = nn.Linear(self.hidden_size, int(latent_size / 2))
-        self.T_var = nn.Linear(self.hidden_size, int(latent_size / 2))
-        self.G_mean = nn.Linear(self.hidden_size, int(latent_size / 2))
-        self.G_var = nn.Linear(self.hidden_size, int(latent_size / 2))
+        self.T_mean = nn.Linear(self.hidden_size,latent_size // 2)
+        self.T_var = nn.Linear(self.hidden_size, latent_size // 2)
+        self.G_mean = nn.Linear(self.hidden_size, latent_size // 2)
+        self.G_var = nn.Linear(self.hidden_size, latent_size // 2)
         
         self.assm_loss = nn.CrossEntropyLoss(size_average=False)
         self.stereo_loss = nn.CrossEntropyLoss(size_average=False)
@@ -109,8 +109,8 @@ class JTNNVAE(nn.Module):
         batch_idx = create_var(torch.LongTensor(batch_idx), use_cuda=self.use_cuda)
         mol_vec = mol_vec.index_select(0, batch_idx)
 
-        mol_vec = mol_vec.view(-1, 1, int(self.latent_size / 2))
-        cand_vec = cand_vec.view(-1, int(self.latent_size / 2), 1)
+        mol_vec = mol_vec.view(-1, 1, self.latent_size // 2)
+        cand_vec = cand_vec.view(-1, self.latent_size // 2, 1)
         scores = torch.bmm(mol_vec, cand_vec).squeeze()
         
         cnt,tot,acc = 0,0,0
@@ -195,9 +195,9 @@ class JTNNVAE(nn.Module):
         
         all_smiles = []
         for i in range(10):
-            epsilon = create_var(torch.randn(1, int(self.latent_size / 2)), False, use_cuda=self.use_cuda)
+            epsilon = create_var(torch.randn(1, self.latent_size // 2), False, use_cuda=self.use_cuda)
             tree_vec = tree_mean + torch.exp(tree_log_var / 2) * epsilon
-            epsilon = create_var(torch.randn(1, int(self.latent_size / 2)), False, use_cuda=self.use_cuda)
+            epsilon = create_var(torch.randn(1, self.latent_size // 2), False, use_cuda=self.use_cuda)
             mol_vec = mol_mean + torch.exp(mol_log_var / 2) * epsilon
             for j in range(10):
                 new_smiles = self.decode(tree_vec, mol_vec, prob_decode=True)
@@ -205,13 +205,13 @@ class JTNNVAE(nn.Module):
         return all_smiles
 
     def sample_prior(self, prob_decode=False):
-        tree_vec = create_var(torch.randn(1, int(self.latent_size / 2)), False, use_cuda=self.use_cuda)
-        mol_vec = create_var(torch.randn(1, int(self.latent_size / 2)), False, use_cuda=self.use_cuda)
+        tree_vec = create_var(torch.randn(1, self.latent_size // 2), False, use_cuda=self.use_cuda)
+        mol_vec = create_var(torch.randn(1, self.latent_size // 2), False, use_cuda=self.use_cuda)
         return self.decode(tree_vec, mol_vec, prob_decode)
 
     def sample_eval(self):
-        tree_vec = create_var(torch.randn(1, int(self.latent_size / 2)), False, use_cuda=self.use_cuda)
-        mol_vec = create_var(torch.randn(1, int(self.latent_size / 2)), False, use_cuda=self.use_cuda)
+        tree_vec = create_var(torch.randn(1, self.latent_size // 2), False, use_cuda=self.use_cuda)
+        mol_vec = create_var(torch.randn(1, self.latent_size // 2), False, use_cuda=self.use_cuda)
         all_smiles = []
         for i in range(100):
             s = self.decode(tree_vec, mol_vec, prob_decode=True)

@@ -24,7 +24,7 @@ def set_batch_nodeID(mol_batch, vocab):
 
 class JTPropVAE(nn.Module):
 
-    def __init__(self, vocab, hidden_size, latent_size, depth, cuda=False):
+    def __init__(self, vocab, hidden_size, latent_size, depth, use_cuda=False):
         super(JTPropVAE, self).__init__()
         self.vocab = vocab
         self.hidden_size = int(hidden_size)
@@ -51,7 +51,7 @@ class JTPropVAE(nn.Module):
         self.assm_loss = nn.CrossEntropyLoss(size_average=False)
         self.stereo_loss = nn.CrossEntropyLoss(size_average=False)
 
-        self.cuda = cuda 
+        self.use_cuda = use_cuda
 
     def encode(self, mol_batch):
         set_batch_nodeID(mol_batch, self.vocab)
@@ -86,9 +86,9 @@ class JTPropVAE(nn.Module):
         z_log_var = torch.cat([tree_log_var,mol_log_var], dim=1)
         kl_loss = -0.5 * torch.sum(1.0 + z_log_var - z_mean * z_mean - torch.exp(z_log_var)) / batch_size
 
-        epsilon = create_var(torch.randn(batch_size, int(self.latent_size / 2)), False, use_cuda=self.cuda)
+        epsilon = create_var(torch.randn(batch_size, self.latent_size // 2), False, use_cuda=self.use_cuda)
         tree_vec = tree_mean + torch.exp(tree_log_var / 2) * epsilon
-        epsilon = create_var(torch.randn(batch_size, int(self.latent_size / 2)), False, use_cuda=self.cuda)
+        epsilon = create_var(torch.randn(batch_size, self.latent_size // 2), False, use_cuda=self.use_cuda)
         mol_vec = mol_mean + torch.exp(mol_log_var / 2) * epsilon
         
         word_loss, topo_loss, word_acc, topo_acc = self.decoder(mol_batch, tree_vec)
@@ -96,7 +96,7 @@ class JTPropVAE(nn.Module):
         stereo_loss, stereo_acc = self.stereo(mol_batch, mol_vec)
 
         all_vec = torch.cat([tree_vec, mol_vec], dim=1)
-        prop_label = create_var(torch.Tensor(prop_batch), use_cuda=self.cuda)
+        prop_label = create_var(torch.Tensor(prop_batch), use_cuda=self.use_cuda)
         prop_loss = self.prop_loss(self.propNN(all_vec).squeeze(), prop_label)
         
         loss = word_loss + topo_loss + assm_loss + 2 * stereo_loss + beta * kl_loss + prop_loss
@@ -115,11 +115,11 @@ class JTPropVAE(nn.Module):
         cand_vec = self.jtmpn(cands, tree_mess)
         cand_vec = self.G_mean(cand_vec)
 
-        batch_idx = create_var(torch.LongTensor(batch_idx), use_cuda=self.cuda)
+        batch_idx = create_var(torch.LongTensor(batch_idx), use_cuda=self.use_cuda)
         mol_vec = mol_vec.index_select(0, batch_idx)
 
-        mol_vec = mol_vec.view(-1, 1, int(self.latent_size / 2))
-        cand_vec = cand_vec.view(-1, int(self.latent_size / 2, 1))
+        mol_vec = mol_vec.view(-1, 1, self.latent_size // 2)
+        cand_vec = cand_vec.view(-1, self.latent_size // 2, 1)
         scores = torch.bmm(mol_vec, cand_vec).squeeze()
         
         cnt,tot,acc = 0,0,0
@@ -136,7 +136,7 @@ class JTPropVAE(nn.Module):
                 if cur_score.data[label] >= cur_score.max().data[0]:
                     acc += 1
 
-                label = create_var(torch.LongTensor([label]), use_cuda=self.cuda)
+                label = create_var(torch.LongTensor([label]), use_cuda=self.use_cuda)
                 all_loss.append( self.assm_loss(cur_score.view(1,-1), label) )
         
         all_loss = torch.cat(all_loss).sum() / len(mol_batch)
@@ -155,9 +155,9 @@ class JTPropVAE(nn.Module):
             labels.append( (cands.index(mol_tree.smiles3D), len(cands)) )
 
         if len(labels) == 0: 
-            return create_var(torch.zeros(1), use_cuda=self.cuda), 1.0
+            return create_var(torch.zeros(1), use_cuda=self.use_cuda), 1.0
 
-        batch_idx = create_var(torch.LongTensor(batch_idx), use_cuda=self.cuda)
+        batch_idx = create_var(torch.LongTensor(batch_idx), use_cuda=self.use_cuda)
         stereo_cands = self.mpn(mol2graph(stereo_cands))
         stereo_cands = self.G_mean(stereo_cands)
         stereo_labels = mol_vec.index_select(0, batch_idx)
@@ -169,7 +169,7 @@ class JTPropVAE(nn.Module):
             cur_scores = scores.narrow(0, st, le)
             if cur_scores.data[label] >= cur_scores.max().data[0]: 
                 acc += 1
-            label = create_var(torch.LongTensor([label]), use_cuda=self.cuda)
+            label = create_var(torch.LongTensor([label]), use_cuda=self.use_cuda)
             all_loss.append( self.stereo_loss(cur_scores.view(1,-1), label) )
             st += le
         all_loss = torch.cat(all_loss).sum() / len(labels)
@@ -185,15 +185,15 @@ class JTPropVAE(nn.Module):
         mol_mean = self.G_mean(mol_vec)
         mol_log_var = -torch.abs(self.G_var(mol_vec)) #Following Mueller et al.
 
-        epsilon = create_var(torch.randn(1, int(self.latent_size / 2)), False, use_cuda=self.cuda)
+        epsilon = create_var(torch.randn(1, self.latent_size // 2), False, use_cuda=self.use_cuda)
         tree_vec = tree_mean + torch.exp(tree_log_var / 2) * epsilon
-        epsilon = create_var(torch.randn(1, int(self.latent_size / 2)), False, use_cuda=self.cuda)
+        epsilon = create_var(torch.randn(1, self.latent_size // 2), False, use_cuda=self.use_cuda)
         mol_vec = mol_mean + torch.exp(mol_log_var / 2) * epsilon
         return self.decode(tree_vec, mol_vec, prob_decode)
 
     def sample_prior(self, prob_decode=False):
-        tree_vec = create_var(torch.randn(1, int(self.latent_size / 2)), False, use_cuda=self.cuda)
-        mol_vec = create_var(torch.randn(1, int(self.latent_size / 2)), False, use_cuda=self.cuda)
+        tree_vec = create_var(torch.randn(1, self.latent_size / 2)), False, use_cuda=self.use_cuda)
+        mol_vec = create_var(torch.randn(1, self.latent_size // 2)), False, use_cuda=self.use_cuda)
         return self.decode(tree_vec, mol_vec, prob_decode)
 
     def optimize(self, smiles, sim_cutoff, lr=2.0, num_iter=20):
@@ -210,14 +210,14 @@ class JTPropVAE(nn.Module):
         mol_log_var = -torch.abs(self.G_var(mol_vec)) #Following Mueller et al.
         mean = torch.cat([tree_mean, mol_mean], dim=1)
         log_var = torch.cat([tree_log_var, mol_log_var], dim=1)
-        cur_vec = create_var(mean.data, True, use_cuda=self.cuda)
+        cur_vec = create_var(mean.data, True, use_cuda=self.use_cuda)
 
         visited = []
         for step in range(num_iter):
             prop_val = self.propNN(cur_vec).squeeze()
             grad = torch.autograd.grad(prop_val, cur_vec)[0]
             cur_vec = cur_vec.data + lr * grad.data
-            cur_vec = create_var(cur_vec, True, use_cuda=self.cuda)
+            cur_vec = create_var(cur_vec, True, use_cuda=self.use_cuda)
             visited.append(cur_vec)
         
         l,r = 0, num_iter - 1

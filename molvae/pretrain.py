@@ -1,17 +1,13 @@
-import os 
+import os
+import sys
+from optparse import OptionParser
+
+import rdkit
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.optim.lr_scheduler as lr_scheduler
 from torch.utils.data import DataLoader
-from torch.autograd import Variable
-
-import math, random, sys
-from optparse import OptionParser
-from collections import deque
-
-from jtnn import *
-import rdkit
 
 lg = rdkit.RDLogger.logger() 
 lg.setLevel(rdkit.RDLogger.CRITICAL)
@@ -27,14 +23,10 @@ parser.add_option("-d", "--depth", dest="depth", default=3)
 parser.add_option("-n", "--num_workers", dest="num_workers", default=4)
 parser.add_option("-p", "--print_iter", dest="print_iter", default=20)
 parser.add_option("-q", "--lr", dest="lr", default=1e-3)
-
-parser.add_option("--use_kl", dest="use_kl", default=0)
-
-parser.add_option('--cuda', dest="cuda", default=True,
+parser.add_option('--use_cuda', dest="use_cuda", default=True,
                     help='Enables CUDA training')
 
 opts,args = parser.parse_args()
-# opts.cuda = not opts.cuda and torch.cuda.is_available()
 
 os.makedirs(opts.save_path, exist_ok=True)
 
@@ -45,12 +37,12 @@ batch_size = int(opts.batch_size)
 hidden_size = int(opts.hidden_size)
 latent_size = int(opts.latent_size)
 depth = int(opts.depth)
-opts.use_kl = bool(int(opts.use_kl))
 opts.num_workers = int(opts.num_workers)
+
 lr = float(opts.lr)
 
 print ("opts={}".format(opts))
-model = JTNNVAE(vocab, hidden_size, latent_size, depth, use_cuda=opts.cuda, use_kl=opts.use_kl)
+model = JTNNVAE(vocab, hidden_size, latent_size, depth, use_cuda=opts.use_cuda)
 
 for param in model.parameters():
     if param.dim() == 1:
@@ -58,9 +50,9 @@ for param in model.parameters():
     else:
         nn.init.xavier_normal(param)
 
-print ("opts.cuda", opts.cuda)
+print ("opts.use_cuda", opts.use_cuda)
 
-if opts.cuda:
+if opts.use_cuda:
     model = model.cuda()
 
 
@@ -73,7 +65,7 @@ scheduler.step()
 
 dataset = MoleculeDataset(opts.train_path)
 
-MAX_EPOCH = 10
+MAX_EPOCH = 3
 PRINT_ITER = int(opts.print_iter)
 
 for epoch in range(MAX_EPOCH):
@@ -103,11 +95,11 @@ for epoch in range(MAX_EPOCH):
             assm_acc = assm_acc / PRINT_ITER * 100
             steo_acc = steo_acc / PRINT_ITER * 100
 
-            print "KL: %.1f, Word: %.2f, Topo: %.2f, Assm: %.2f, Steo: %.2f" % (kl_div, word_acc, topo_acc, assm_acc, steo_acc)
+            print("KL: %.1f, Word: %.2f, Topo: %.2f, Assm: %.2f, Steo: %.2f" % (kl_div, word_acc, topo_acc, assm_acc, steo_acc))
             word_acc,topo_acc,assm_acc,steo_acc = 0,0,0,0
             sys.stdout.flush()
 
     scheduler.step()
-    print "learning rate: %.6f" % scheduler.get_lr()[0]
+    print("learning rate: %.6f" % scheduler.get_lr()[0])
     torch.save(model.state_dict(), opts.save_path + "/model.iter-" + str(epoch))
 
