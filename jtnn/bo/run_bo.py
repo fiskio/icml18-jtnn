@@ -9,7 +9,7 @@ from rdkit.Chem import MolFromSmiles
 from rdkit.Chem import Descriptors
 
 import torch
-from jtvae.jtnn import create_var, JTNNVAE, Vocab
+from jtnn.jtnn import create_var, JTNNVAE, Vocab
 
 from optparse import OptionParser
 

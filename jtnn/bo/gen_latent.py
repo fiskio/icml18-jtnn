@@ -8,7 +8,7 @@ from rdkit.Chem import rdmolops
 from . import sascorer
 
 import numpy as np  
-from jtvae.jtnn import *
+from jtnn.jtnn import *
 
 lg = rdkit.RDLogger.logger() 
 lg.setLevel(rdkit.RDLogger.CRITICAL)
