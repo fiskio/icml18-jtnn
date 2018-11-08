@@ -23,7 +23,7 @@ def set_batch_nodeID(mol_batch, vocab):
             tot += 1
 
 class JTNNVAE(nn.Module):
-    def __init__(self, vocab, hidden_size, latent_size, depth, use_cuda=False, use_kl=True):
+    def __init__(self, vocab, hidden_size, latent_size, depth, use_cuda=False):
         super(JTNNVAE, self).__init__()
         self.vocab = vocab
         self.hidden_size = hidden_size
@@ -36,7 +36,7 @@ class JTNNVAE(nn.Module):
         self.jtmpn = JTMPN(self.hidden_size, depth, use_cuda=self.use_cuda)
         self.mpn = MPN(self.hidden_size, depth, use_cuda=self.use_cuda)
         self.decoder = JTNNDecoder(vocab, self.hidden_size,
-                                   latent_size / 2, self.embedding, use_cuda=self.use_cuda)
+                                   latent_size // 2, self.embedding, use_cuda=self.use_cuda)
 
         self.T_mean = nn.Linear(self.hidden_size,latent_size // 2)
         self.T_var = nn.Linear(self.hidden_size, latent_size // 2)
@@ -79,9 +79,9 @@ class JTNNVAE(nn.Module):
         z_log_var = torch.cat([tree_log_var,mol_log_var], dim=1)
         kl_loss = -0.5 * torch.sum(1.0 + z_log_var - z_mean * z_mean - torch.exp(z_log_var)) / batch_size
 
-        epsilon = create_var(torch.randn(batch_size, self.latent_size / 2), False)
+        epsilon = create_var(torch.randn(batch_size, self.latent_size // 2), False)
         tree_vec = tree_mean + torch.exp(tree_log_var / 2) * epsilon
-        epsilon = create_var(torch.randn(batch_size, self.latent_size / 2), False)
+        epsilon = create_var(torch.randn(batch_size, self.latent_size // 2), False)
         mol_vec = mol_mean + torch.exp(mol_log_var / 2) * epsilon
         
         word_loss, topo_loss, word_acc, topo_acc = self.decoder(mol_batch, tree_vec)
@@ -129,7 +129,7 @@ class JTNNVAE(nn.Module):
 
                 label = create_var(torch.LongTensor([label]), use_cuda=self.use_cuda)
                 all_loss.append( self.assm_loss(cur_score.view(1,-1), label) )
-        
+
         all_loss = torch.cat(all_loss).sum() / len(mol_batch)
         return all_loss, acc * 1.0 / cnt
 
@@ -267,7 +267,7 @@ class JTNNVAE(nn.Module):
         cands = enum_assemble(cur_node, neighbors, prev_nodes, cur_amap)
         if len(cands) == 0:
             return None
-        cand_smiles,cand_mols,cand_amap = zip(*cands)
+        cand_smiles,cand_mols,cand_amap = list(zip(*cands))
 
         cands = [(candmol, all_nodes, cur_node) for candmol in cand_mols]
 

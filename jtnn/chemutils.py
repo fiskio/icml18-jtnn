@@ -135,12 +135,12 @@ def tree_decomp(mol):
                     if edges[(c1,c2)] < len(inter):
                         edges[(c1,c2)] = len(inter) #cnei[i] < cnei[j] by construction
 
-    edges = [u + (MST_MAX_WEIGHT-v,) for u,v in edges.items()]
+    edges = [u + (MST_MAX_WEIGHT-v,) for u,v in list(edges.items())]
     if len(edges) == 0:
         return cliques, edges
 
     #Compute Maximum Spanning Tree
-    row,col,data = zip(*edges)
+    row,col,data = list(zip(*edges))
     n_clique = len(cliques)
     clique_graph = csr_matrix( (data,(row,col)), shape=(n_clique,n_clique) )
     junc_tree = minimum_spanning_tree(clique_graph)
@@ -312,7 +312,7 @@ def dfs_assemble(cur_mol, global_amap, fa_amap, cur_node, fa_node):
     cur_amap = [(fa_nid,a2,a1) for nid,a1,a2 in fa_amap if nid == cur_node.nid]
     cands = enum_assemble(cur_node, neighbors, prev_nodes, cur_amap)
 
-    cand_smiles,cand_amap = zip(*cands)
+    cand_smiles,cand_amap = list(zip(*cands))
     label_idx = cand_smiles.index(cur_node.label)
     label_amap = cand_amap[label_idx]
 
@@ -328,7 +328,7 @@ def dfs_assemble(cur_mol, global_amap, fa_amap, cur_node, fa_node):
 
 if __name__ == "__main__":
     import sys
-    from mol_tree import MolTree
+    from .mol_tree import MolTree
     lg = rdkit.RDLogger.logger() 
     lg.setLevel(rdkit.RDLogger.CRITICAL)
     
@@ -341,7 +341,7 @@ if __name__ == "__main__":
             print ('-------------------------------------------')
             print (s)
             for node in tree.nodes:
-                print (node.smiles, [x.smiles for x in node.neighbors])
+                print((node.smiles, [x.smiles for x in node.neighbors]))
 
     def decode_test():
         wrong = 0
@@ -363,9 +363,9 @@ if __name__ == "__main__":
 
             gold_smiles = Chem.MolToSmiles(Chem.MolFromSmiles(s))
             if gold_smiles != dec_smiles:
-                print (gold_smiles, dec_smiles)
+                print((gold_smiles, dec_smiles))
                 wrong += 1
-            print (wrong, tot + 1)
+            print((wrong, tot + 1))
 
     def enum_test():
         for s in sys.stdin:
@@ -375,9 +375,9 @@ if __name__ == "__main__":
             tree.assemble()
             for node in tree.nodes:
                 if node.label not in node.cands:
-                    print (tree.smiles)
-                    print (node.smiles, [x.smiles for x in node.neighbors])
-                    print (node.label, len(node.cands))
+                    print((tree.smiles))
+                    print((node.smiles, [x.smiles for x in node.neighbors]))
+                    print((node.label, len(node.cands)))
 
     def count():
         cnt,n = 0,0

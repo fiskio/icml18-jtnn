@@ -1,15 +1,18 @@
-import os
-import sys
-from optparse import OptionParser
-
-import rdkit
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.optim.lr_scheduler as lr_scheduler
 from torch.utils.data import DataLoader
+from torch.autograd import Variable
 
-lg = rdkit.RDLogger.logger() 
+import math, random, sys
+from optparse import OptionParser
+from collections import deque
+
+from jtnn import *
+import rdkit
+
+lg = rdkit.RDLogger.logger()
 lg.setLevel(rdkit.RDLogger.CRITICAL)
 
 parser = OptionParser()
@@ -23,15 +26,10 @@ parser.add_option("-l", "--latent", dest="latent_size", default=56)
 parser.add_option("-d", "--depth", dest="depth", default=3)
 parser.add_option("-z", "--beta", dest="beta", default=1.0)
 parser.add_option("-q", "--lr", dest="lr", default=1e-3)
+opts, args = parser.parse_args()
+opts.cuda = torch.cuda.is_available()
 
-
-opts,args = parser.parse_args()
-opts.use_cuda = torch.cuda.is_available()
-print ("opts={}".format(opts))
-
-os.makedirs(opts.save_path, exist_ok=True)
-
-vocab = [x.strip("\r\n ") for x in open(opts.vocab_path)] 
+vocab = [x.strip("\r\n ") for x in open(opts.vocab_path)]
 vocab = Vocab(vocab)
 
 batch_size = int(opts.batch_size)
@@ -40,10 +38,9 @@ latent_size = int(opts.latent_size)
 depth = int(opts.depth)
 beta = float(opts.beta)
 lr = float(opts.lr)
-anneal = float(opts.anneal)
+# anneal = float(opts.anneal)
 
-model = JTNNVAE(vocab, hidden_size, latent_size, depth, use_cuda=opts.use_cuda)
-optimizer = optim.Adam(model.parameters(), lr=lr)
+model = JTNNVAE(vocab, hidden_size, latent_size, depth, use_cuda=opts.cuda)
 
 if opts.model_path is not None:
     model.load_state_dict(torch.load(opts.model_path))
@@ -55,9 +52,9 @@ else:
             nn.init.xavier_normal(param)
 
 if opts.cuda: model = model.cuda()
+print(("Model #Params: %dK" % (sum([x.nelement() for x in model.parameters()]) / 1000,)))
 
-print ("Model #Params: %dK" % (sum([x.nelement() for x in model.parameters()]) / 1000,))
-
+optimizer = optim.Adam(model.parameters(), lr=lr)
 scheduler = lr_scheduler.ExponentialLR(optimizer, 0.9)
 scheduler.step()
 
@@ -67,9 +64,10 @@ MAX_EPOCH = 7
 PRINT_ITER = 20
 
 for epoch in range(MAX_EPOCH):
-    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=4, collate_fn=lambda x:x, drop_last=True)
+    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=4, collate_fn=lambda x: x,
+                            drop_last=True)
 
-    word_acc,topo_acc,assm_acc,steo_acc = 0,0,0,0
+    word_acc, topo_acc, assm_acc, steo_acc = 0, 0, 0, 0
 
     for it, batch in enumerate(dataloader):
         for mol_tree in batch:
@@ -94,16 +92,15 @@ for epoch in range(MAX_EPOCH):
             assm_acc = assm_acc / PRINT_ITER * 100
             steo_acc = steo_acc / PRINT_ITER * 100
 
-            print("ep: %2d it: %2d KL: %.1f, Word: %.2f, Topo: %.2f, Assm: %.2f, Steo: %.2f" % (epoch, it, kl_div, word_acc, topo_acc, assm_acc, steo_acc))
-            word_acc,topo_acc,assm_acc,steo_acc = 0,0,0,0
-            sys.stdout.flush()
+        print(("KL: %.1f, Word: %.2f, Topo: %.2f, Assm: %.2f, Steo: %.2f" % (kl_div, word_acc, topo_acc, assm_acc, steo_acc)))
+        word_acc, topo_acc, assm_acc, steo_acc = 0, 0, 0, 0
+        sys.stdout.flush()
 
-        if (it + 1) % 1500 == 0: #Fast annealing
+        if (it + 1) % 1500 == 0:  # Fast annealing
             scheduler.step()
-            print("learning rate: %.6f" % scheduler.get_lr()[0])
+            print(("learning rate: %.6f" % scheduler.get_lr()[0]))
             torch.save(model.state_dict(), opts.save_path + "/model.iter-%d-%d" % (epoch, it + 1))
 
     scheduler.step()
-    print("learning rate: %.6f" % scheduler.get_lr()[0])
+    print(("learning rate: %.6f" % scheduler.get_lr()[0]))
     torch.save(model.state_dict(), opts.save_path + "/model.iter-" + str(epoch))
-

@@ -7,7 +7,7 @@ import rdkit
 from rdkit.Chem import Descriptors
 from rdkit.Chem import MolFromSmiles, MolToSmiles
 from rdkit.Chem import rdmolops
-import sascorer
+from . import sascorer
 
 import numpy as np  
 from jtnn import *

@@ -302,7 +302,7 @@ def have_slots(fa_slots, ch_slots):
 
     if len(matches) == 0: return False
 
-    fa_match,ch_match = zip(*matches)
+    fa_match,ch_match = list(zip(*matches))
     if len(set(fa_match)) == 1 and 1 < len(fa_slots) <= 2: #never remove atom from ring
         fa_slots.pop(fa_match[0])
     if len(set(ch_match)) == 1 and 1 < len(ch_slots) <= 2: #never remove atom from ring

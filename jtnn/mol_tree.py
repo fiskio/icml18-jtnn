@@ -73,7 +73,7 @@ class MolTreeNode(object):
 
         cands = enum_assemble(self, neighbors)
         if len(cands) > 0:
-            self.cands, self.cand_mols, _ = zip(*cands)
+            self.cands, self.cand_mols, _ = list(zip(*cands))
             self.cands = list(self.cands)
             self.cand_mols = list(self.cand_mols)
         else:

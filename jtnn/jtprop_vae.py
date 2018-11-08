@@ -32,15 +32,15 @@ class JTPropVAE(nn.Module):
         self.depth = depth
 
         self.embedding = nn.Embedding(vocab.size(), hidden_size)
-        self.jtnn = JTNNEncoder(vocab, hidden_size, self.embedding)
-        self.jtmpn = JTMPN(hidden_size, depth)
-        self.mpn = MPN(hidden_size, depth)
-        self.decoder = JTNNDecoder(vocab, hidden_size, latent_size / 2, self.embedding)
+        self.jtnn = JTNNEncoder(vocab, hidden_size, self.embedding, use_cuda=use_cuda)
+        self.jtmpn = JTMPN(hidden_size, depth, use_cuda=use_cuda)
+        self.mpn = MPN(hidden_size, depth, use_cuda=use_cuda)
+        self.decoder = JTNNDecoder(vocab, hidden_size, latent_size // 2, self.embedding, use_cuda=use_cuda)
 
-        self.T_mean = nn.Linear(hidden_size, self.latent_size / 2)
-        self.T_var = nn.Linear(hidden_size,  self.latent_size / 2)
-        self.G_mean = nn.Linear(hidden_size,  self.latent_size / 2)
-        self.G_var = nn.Linear(hidden_size,  self.latent_size / 2)
+        self.T_mean = nn.Linear(hidden_size, self.latent_size // 2)
+        self.T_var = nn.Linear(hidden_size,  self.latent_size // 2)
+        self.G_mean = nn.Linear(hidden_size,  self.latent_size // 2)
+        self.G_var = nn.Linear(hidden_size,  self.latent_size // 2)
         
         self.propNN = nn.Sequential(
                 nn.Linear(self.latent_size, self.hidden_size),
@@ -74,7 +74,7 @@ class JTPropVAE(nn.Module):
 
     def forward(self, mol_batch, beta=0):
         batch_size = len(mol_batch)
-        mol_batch, prop_batch = zip(*mol_batch)
+        mol_batch, prop_batch = list(zip(*mol_batch))
         tree_mess, tree_vec, mol_vec = self.encode(mol_batch)
 
         tree_mean = self.T_mean(tree_vec)
@@ -311,7 +311,7 @@ class JTPropVAE(nn.Module):
         cands = enum_assemble(cur_node, neighbors, prev_nodes, cur_amap)
         if len(cands) == 0:
             return None
-        cand_smiles,cand_mols,cand_amap = zip(*cands)
+        cand_smiles,cand_mols,cand_amap = list(zip(*cands))
 
         cands = [(candmol, all_nodes, cur_node) for candmol in cand_mols]
 

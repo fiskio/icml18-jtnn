@@ -2,12 +2,12 @@
 # This class represents a node within the network
 #
 
-from __future__ import print_function
+
 
 import theano
 import theano.tensor as T
 
-from sparse_gp_theano_internal import *
+from .sparse_gp_theano_internal import *
 
 import scipy.stats    as sps
 import scipy.optimize as spo
