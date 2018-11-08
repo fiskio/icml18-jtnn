@@ -78,16 +78,16 @@ for epoch in range(MAX_EPOCH):
         steo_acc += dacc
         prop_acc += pacc
 
-        # if (it + 1) % PRINT_ITER == 0:
-        word_acc = word_acc / PRINT_ITER * 100
-        topo_acc = topo_acc / PRINT_ITER * 100
-        assm_acc = assm_acc / PRINT_ITER * 100
-        steo_acc = steo_acc / PRINT_ITER * 100
-        prop_acc = prop_acc / PRINT_ITER
+        if (it + 1) % PRINT_ITER == 0:
+            word_acc = word_acc / PRINT_ITER * 100
+            topo_acc = topo_acc / PRINT_ITER * 100
+            assm_acc = assm_acc / PRINT_ITER * 100
+            steo_acc = steo_acc / PRINT_ITER * 100
+            prop_acc = prop_acc / PRINT_ITER
 
-        print(("ep: %2d it: %2d KL: %.1f, Word: %.2f, Topo: %.2f, Assm: %.2f, Steo: %.2f, Prop: %.4f" % (epoch, it, kl_div, word_acc, topo_acc, assm_acc, steo_acc, prop_acc)))
-        word_acc,topo_acc,assm_acc,steo_acc,prop_acc = 0,0,0,0,0
-        sys.stdout.flush()
+            print(("ep: %2d it: %2d KL: %.1f, Word: %.2f, Topo: %.2f, Assm: %.2f, Steo: %.2f, Prop: %.4f" % (epoch, it, kl_div, word_acc, topo_acc, assm_acc, steo_acc, prop_acc)))
+            word_acc,topo_acc,assm_acc,steo_acc,prop_acc = 0,0,0,0,0
+            sys.stdout.flush()
 
     scheduler.step()
     print("learning rate: %.6f" % scheduler.get_lr()[0])
