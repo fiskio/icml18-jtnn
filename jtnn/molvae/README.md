@@ -6,6 +6,14 @@ export PYTHONPATH=$PREFIX/icml18-jtnn
 Our ZINC dataset is in `icml18-jtnn/data` (copied from https://github.com/mkusner/grammarVAE). 
 We follow the same train/dev/test split as previous work. 
 
+## Deriving Vocabulary 
+If you are running our code on a new dataset, you need to compute the vocabulary from your dataset.
+To perform tree decomposition over a set of molecules, run
+```
+python ../jtnn/mol_tree.py < ../data/all.txt
+```
+This gives you the vocabulary of cluster labels over the dataset `all.txt`.
+
 ## Training
 We trained VAE model in two phases:
 1. We train our model for three epochs without KL regularization term (So we are essentially training an autoencoder).
@@ -45,4 +53,3 @@ python reconstruct.py --test ../data/test.txt --vocab ../data/vocab.txt \
 --model MPNVAE-h450-L56-d3-beta0.005/model.4
 ```
 Replace `test.txt` with `valid.txt` to test the validation accuracy (for hyperparameter tuning).
-
