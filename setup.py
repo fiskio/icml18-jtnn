@@ -4,6 +4,7 @@ setup(name='jtnn',
       version='0.1.1',
       url='https://github.com/maxmed/icml18-jtnn',
       license='MIT',
+      packages=['jtnn', 'jtnn.bo', 'jtnn.jtnn', 'jtnn.molvae', 'jtnn.molopt'],
       install_requires=[
           'joblib==0.12.5',
           'numpy==1.15.2',
@@ -16,5 +17,5 @@ setup(name='jtnn',
       extras_require={
           'rdkit': ['rdkit>=2018.09.1.0'],
       },
-      include_package_data=True,
+      zip_safe=True,
       )

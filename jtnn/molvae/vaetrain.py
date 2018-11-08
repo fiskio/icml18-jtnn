@@ -3,13 +3,11 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.optim.lr_scheduler as lr_scheduler
 from torch.utils.data import DataLoader
-from torch.autograd import Variable
 
-import math, random, sys
+import sys
 from optparse import OptionParser
-from collections import deque
 
-from jtnn import *
+from jtnn.jtnn import *
 import rdkit
 
 lg = rdkit.RDLogger.logger()

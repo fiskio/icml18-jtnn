@@ -1,17 +1,9 @@
 import torch
-import torch.nn as nn
-import torch.optim as optim
-import torch.optim.lr_scheduler as lr_scheduler
-from torch.autograd import Variable
 
-import math, random, sys
 from optparse import OptionParser
-from collections import deque
 import rdkit
-import rdkit.Chem as Chem
-from rdkit.Chem import Draw
 
-from jtnn import *
+from jtnn.jtnn import *
 
 lg = rdkit.RDLogger.logger() 
 lg.setLevel(rdkit.RDLogger.CRITICAL)
