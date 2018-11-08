@@ -1,8 +1,5 @@
 import torch
-import torch.nn as nn
-from torch.autograd import Variable
 
-import math, random, sys
 from optparse import OptionParser
 
 import rdkit
@@ -10,7 +7,7 @@ import rdkit.Chem as Chem
 from rdkit.Chem import Draw
 
 import numpy as np
-from jtnn import *
+from jtvae.jtnn import *
 
 lg = rdkit.RDLogger.logger() 
 lg.setLevel(rdkit.RDLogger.CRITICAL)

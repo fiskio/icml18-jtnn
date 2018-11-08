@@ -4,6 +4,7 @@ setup(name='jtnn',
       version='0.1.1',
       url='https://github.com/maxmed/icml18-jtnn',
       license='MIT',
+      packages=['bo', 'data', 'data', ''],
       install_requires=[
           'joblib==0.12.5',
           'numpy==1.15.2',

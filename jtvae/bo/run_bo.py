@@ -3,15 +3,13 @@ import gzip
 from .sparse_gp import SparseGP
 import scipy.stats as sps
 import numpy as np
-import os.path
 
 import rdkit
-from rdkit.Chem import MolFromSmiles, MolToSmiles
+from rdkit.Chem import MolFromSmiles
 from rdkit.Chem import Descriptors
 
 import torch
-import torch.nn as nn
-from jtnn import create_var, JTNNVAE, Vocab
+from jtvae.jtnn import create_var, JTNNVAE, Vocab
 
 from optparse import OptionParser
 
@@ -128,7 +126,7 @@ while iteration < 5:
     scores = []
     for i in range(len(valid_smiles)):
         current_log_P_value = Descriptors.MolLogP(MolFromSmiles(valid_smiles[ i ]))
-        current_SA_score = -sascorer.calculateScore(MolFromSmiles(valid_smiles[ i ]))
+        current_SA_score = -sascorer.calculateScore(MolFromSmiles(valid_smiles[ i]))
         cycle_list = nx.cycle_basis(nx.Graph(rdmolops.GetAdjacencyMatrix(MolFromSmiles(valid_smiles[ i ]))))
         if len(cycle_list) == 0:
             cycle_length = 0

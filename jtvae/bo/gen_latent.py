@@ -1,6 +1,4 @@
 import torch
-import torch.nn as nn
-from torch.autograd import Variable
 from optparse import OptionParser
 
 import rdkit
@@ -10,7 +8,7 @@ from rdkit.Chem import rdmolops
 from . import sascorer
 
 import numpy as np  
-from jtnn import *
+from jtvae.jtnn import *
 
 lg = rdkit.RDLogger.logger() 
 lg.setLevel(rdkit.RDLogger.CRITICAL)
@@ -54,7 +52,7 @@ for i in range(len(smiles)):
 
 SA_scores = []
 for i in range(len(smiles)):
-    SA_scores.append(-sascorer.calculateScore(MolFromSmiles(smiles_rdkit[ i ])))
+    SA_scores.append(-sascorer.calculateScore(MolFromSmiles(smiles_rdkit[ i])))
 
 import networkx as nx
 
