@@ -10,7 +10,7 @@ First generate the latent representation of all training molecules:
 ```
 python gen_latent.py --data ../data/train.txt --vocab ../data/vocab.txt \
 --hidden 450 --depth 3 --latent 56 \
---model ../molvae/MPNVAE-h450-L56-d3-beta0.005/model.iter-4
+--model ../molvae/MPNVAE-h450-L56-d3-beta0.005/model.4
 ```
 This generates `latent_features.txt` for latent vectors and other files for logP, synthetic accessability scores.
 

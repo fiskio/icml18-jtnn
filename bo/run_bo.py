@@ -1,6 +1,6 @@
 import pickle
 import gzip
-from sparse_gp import SparseGP
+from .sparse_gp import SparseGP
 import scipy.stats as sps
 import numpy as np
 import os.path
@@ -39,6 +39,7 @@ parser.add_option("-l", "--latent", dest="latent_size", default=56)
 parser.add_option("-d", "--depth", dest="depth", default=3)
 parser.add_option("-r", "--seed", dest="random_seed", default=None)
 opts,args = parser.parse_args()
+opts.cuda = torch.cuda.is_available()
 
 vocab = [x.strip("\r\n ") for x in open(opts.vocab_path)] 
 vocab = Vocab(vocab)
@@ -50,7 +51,9 @@ random_seed = int(opts.random_seed)
 
 model = JTNNVAE(vocab, hidden_size, latent_size, depth)
 model.load_state_dict(torch.load(opts.model_path))
-model = model.cuda()
+
+if opts.cuda:
+    model = model.cuda()
 
 # We load the random seed
 np.random.seed(random_seed)
@@ -89,20 +92,20 @@ while iteration < 5:
     pred, uncert = sgp.predict(X_test, 0 * X_test)
     error = np.sqrt(np.mean((pred - y_test)**2))
     testll = np.mean(sps.norm.logpdf(pred - y_test, scale = np.sqrt(uncert)))
-    print 'Test RMSE: ', error
-    print 'Test ll: ', testll
+    print('Test RMSE: ', error)
+    print('Test ll: ', testll)
 
     pred, uncert = sgp.predict(X_train, 0 * X_train)
     error = np.sqrt(np.mean((pred - y_train)**2))
     trainll = np.mean(sps.norm.logpdf(pred - y_train, scale = np.sqrt(uncert)))
-    print 'Train RMSE: ', error
-    print 'Train ll: ', trainll
+    print('Train RMSE: ', error)
+    print('Train ll: ', trainll)
 
     # We pick the next 60 inputs
     next_inputs = sgp.batched_greedy_ei(60, np.min(X_train, 0), np.max(X_train, 0))
     valid_smiles = []
     new_features = []
-    for i in xrange(60):
+    for i in range(60):
         all_vec = next_inputs[i].reshape((1,-1))
         tree_vec,mol_vec = np.hsplit(all_vec, 2)
         tree_vec = create_var(torch.from_numpy(tree_vec).float())
@@ -112,13 +115,13 @@ while iteration < 5:
             valid_smiles.append(s)
             new_features.append(all_vec)
     
-    print len(valid_smiles), "molecules are found"
+    print(len(valid_smiles), "molecules are found")
     valid_smiles = valid_smiles[:50]
     new_features = next_inputs[:50]
     new_features = np.vstack(new_features)
     save_object(valid_smiles, opts.save_dir + "/valid_smiles{}.dat".format(iteration))
 
-    import sascorer
+    from . import sascorer
     import networkx as nx
     from rdkit.Chem import rdmolops
 
@@ -145,8 +148,8 @@ while iteration < 5:
         score = current_SA_score_normalized + current_log_P_value_normalized + current_cycle_score_normalized
         scores.append(-score) #target is always minused
 
-    print valid_smiles
-    print scores 
+    print(valid_smiles)
+    print(scores) 
 
     save_object(scores, opts.save_dir + "/scores{}.dat".format(iteration))
 

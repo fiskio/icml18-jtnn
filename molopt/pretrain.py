@@ -25,6 +25,8 @@ parser.add_option("-w", "--hidden", dest="hidden_size", default=200)
 parser.add_option("-l", "--latent", dest="latent_size", default=56)
 parser.add_option("-d", "--depth", dest="depth", default=3)
 opts,args = parser.parse_args()
+opts.cuda = torch.cuda.is_available()
+
    
 vocab = [x.strip("\r\n ") for x in open(opts.vocab_path)] 
 vocab = Vocab(vocab)
@@ -34,7 +36,7 @@ hidden_size = int(opts.hidden_size)
 latent_size = int(opts.latent_size)
 depth = int(opts.depth)
 
-model = JTPropVAE(vocab, hidden_size, latent_size, depth)
+model = JTPropVAE(vocab, hidden_size, latent_size, depth, use_cuda=opts.cuda)
 
 for param in model.parameters():
     if param.dim() == 1:
@@ -42,8 +44,8 @@ for param in model.parameters():
     else:
         nn.init.xavier_normal(param)
 
-model = model.cuda()
-print "Model #Params: %dK" % (sum([x.nelement() for x in model.parameters()]) / 1000,)
+if opts.cuda: model = model.cuda()
+print("Model #Params: %dK" % (sum([x.nelement() for x in model.parameters()]) / 1000,))
 
 optimizer = optim.Adam(model.parameters(), lr=1e-3)
 scheduler = lr_scheduler.ExponentialLR(optimizer, 0.9)
@@ -53,9 +55,9 @@ dataset = PropDataset(opts.train_path, opts.prop_path)
 dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=4, collate_fn=lambda x:x)
 
 MAX_EPOCH = 3
-PRINT_ITER = 20
+PRINT_ITER = 1
 
-for epoch in xrange(MAX_EPOCH):
+for epoch in range(MAX_EPOCH):
     word_acc,topo_acc,assm_acc,steo_acc,prop_acc = 0,0,0,0,0
 
     for it, batch in enumerate(dataloader):
@@ -83,11 +85,11 @@ for epoch in xrange(MAX_EPOCH):
             steo_acc = steo_acc / PRINT_ITER * 100
             prop_acc = prop_acc / PRINT_ITER
 
-            print "KL: %.1f, Word: %.2f, Topo: %.2f, Assm: %.2f, Steo: %.2f, Prop: %.4f" % (kl_div, word_acc, topo_acc, assm_acc, steo_acc, prop_acc)
+            print(("ep: %2d it: %2d KL: %.1f, Word: %.2f, Topo: %.2f, Assm: %.2f, Steo: %.2f, Prop: %.4f" % (epoch, it, kl_div, word_acc, topo_acc, assm_acc, steo_acc, prop_acc)))
             word_acc,topo_acc,assm_acc,steo_acc,prop_acc = 0,0,0,0,0
             sys.stdout.flush()
 
     scheduler.step()
-    print "learning rate: %.6f" % scheduler.get_lr()[0]
+    print("learning rate: %.6f" % scheduler.get_lr()[0])
     torch.save(model.state_dict(), opts.save_path + "/model.iter-" + str(epoch))
 

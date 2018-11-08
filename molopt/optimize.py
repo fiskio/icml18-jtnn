@@ -25,7 +25,8 @@ parser.add_option("-l", "--latent", dest="latent_size", default=56)
 parser.add_option("-d", "--depth", dest="depth", default=3)
 parser.add_option("-s", "--sim", dest="cutoff", default=0.0)
 opts,args = parser.parse_args()
-   
+opts.cuda = torch.cuda.is_available()
+
 vocab = [x.strip("\r\n ") for x in open(opts.vocab_path)] 
 vocab = Vocab(vocab)
 
@@ -34,9 +35,9 @@ latent_size = int(opts.latent_size)
 depth = int(opts.depth)
 sim_cutoff = float(opts.cutoff)
 
-model = JTPropVAE(vocab, hidden_size, latent_size, depth)
+model = JTPropVAE(vocab, hidden_size, latent_size, depth, use_cuda=opts.cuda)
 model.load_state_dict(torch.load(opts.model_path))
-model = model.cuda()
+if opts.cuda: model = model.cuda()
 
 data = []
 with open(opts.test_path) as f:
@@ -54,6 +55,6 @@ for smiles in data:
     new_score = Descriptors.MolLogP(new_mol) - sascorer.calculateScore(new_mol)
 
     res.append( (new_score - score, sim, score, new_score, smiles, new_smiles) )
-    print new_score - score, sim, score, new_score, smiles, new_smiles
+    print(new_score - score, sim, score, new_score, smiles, new_smiles)
 
-print sum([x[0] for x in res]), sum([x[1] for x in res])
+print(sum([x[0] for x in res]), sum([x[1] for x in res]))

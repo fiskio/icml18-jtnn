@@ -1,8 +1,8 @@
 import torch
 import torch.nn as nn
-from mol_tree import Vocab, MolTree, MolTreeNode
-from nnutils import create_var, GRU
-from chemutils import enum_assemble
+from .mol_tree import Vocab, MolTree, MolTreeNode
+from .nnutils import create_var, GRU
+from .chemutils import enum_assemble
 import copy
 
 MAX_NB = 8
@@ -10,12 +10,13 @@ MAX_DECODE_LEN = 100
 
 class JTNNDecoder(nn.Module):
 
-    def __init__(self, vocab, hidden_size, latent_size, embedding=None):
+    def __init__(self, vocab, hidden_size, latent_size,
+                 embedding=None, use_cuda=False):
         super(JTNNDecoder, self).__init__()
         self.hidden_size = hidden_size
         self.vocab_size = vocab.size()
         self.vocab = vocab
-
+        
         if embedding is None:
             self.embedding = nn.Embedding(self.vocab_size, hidden_size)
         else:
@@ -38,6 +39,8 @@ class JTNNDecoder(nn.Module):
         #Loss Functions
         self.pred_loss = nn.CrossEntropyLoss(size_average=False)
         self.stop_loss = nn.BCEWithLogitsLoss(size_average=False)
+
+        self.use_cuda = use_cuda
 
     def get_trace(self, node):
         super_root = MolTreeNode("")
@@ -62,15 +65,15 @@ class JTNNDecoder(nn.Module):
                 node.neighbors = []
 
         #Predict Root
-        pred_hiddens.append(create_var(torch.zeros(len(mol_batch),self.hidden_size)))
+        pred_hiddens.append(create_var(torch.zeros(len(mol_batch),self.hidden_size), use_cuda=self.use_cuda))
         pred_targets.extend([mol_tree.nodes[0].wid for mol_tree in mol_batch])
         pred_mol_vecs.append(mol_vec) 
 
         max_iter = max([len(tr) for tr in traces])
-        padding = create_var(torch.zeros(self.hidden_size), False)
+        padding = create_var(torch.zeros(self.hidden_size), False, use_cuda=self.use_cuda)
         h = {}
 
-        for t in xrange(max_iter):
+        for t in range(max_iter):
             prop_list = []
             batch_list = []
             for i,plist in enumerate(traces):
@@ -98,7 +101,7 @@ class JTNNDecoder(nn.Module):
                 cur_x.append(node_x.wid)
 
             #Clique embedding
-            cur_x = create_var(torch.LongTensor(cur_x))
+            cur_x = create_var(torch.LongTensor(cur_x), use_cuda=self.use_cuda)
             cur_x = self.embedding(cur_x)
 
             #Message passing
@@ -123,7 +126,7 @@ class JTNNDecoder(nn.Module):
                 stop_target.append(direction)
 
             #Hidden states for stop prediction
-            cur_batch = create_var(torch.LongTensor(batch_list))
+            cur_batch = create_var(torch.LongTensor(batch_list), use_cuda=self.use_cuda)
             cur_mol_vec = mol_vec.index_select(0, cur_batch)
             stop_hidden = torch.cat([cur_x,cur_o,cur_mol_vec], dim=1)
             stop_hiddens.append( stop_hidden )
@@ -132,10 +135,10 @@ class JTNNDecoder(nn.Module):
             #Hidden states for clique prediction
             if len(pred_list) > 0:
                 batch_list = [batch_list[i] for i in pred_list]
-                cur_batch = create_var(torch.LongTensor(batch_list))
+                cur_batch = create_var(torch.LongTensor(batch_list), use_cuda=self.use_cuda)
                 pred_mol_vecs.append( mol_vec.index_select(0, cur_batch) )
 
-                cur_pred = create_var(torch.LongTensor(pred_list))
+                cur_pred = create_var(torch.LongTensor(pred_list), use_cuda=self.use_cuda)
                 pred_hiddens.append( new_h.index_select(0, cur_pred) )
                 pred_targets.extend( pred_target )
 
@@ -149,7 +152,7 @@ class JTNNDecoder(nn.Module):
             cur_o_nei.extend(cur_nei)
             cur_o_nei.extend([padding] * pad_len)
 
-        cur_x = create_var(torch.LongTensor(cur_x))
+        cur_x = create_var(torch.LongTensor(cur_x), use_cuda=self.use_cuda)
         cur_x = self.embedding(cur_x)
         cur_o_nei = torch.stack(cur_o_nei, dim=0).view(-1,MAX_NB,self.hidden_size)
         cur_o = cur_o_nei.sum(dim=1)
@@ -164,7 +167,7 @@ class JTNNDecoder(nn.Module):
         pred_vecs = torch.cat([pred_hiddens, pred_mol_vecs], dim=1)
         pred_vecs = nn.ReLU()(self.W(pred_vecs))
         pred_scores = self.W_o(pred_vecs)
-        pred_targets = create_var(torch.LongTensor(pred_targets))
+        pred_targets = create_var(torch.LongTensor(pred_targets), use_cuda=self.use_cuda)
 
         pred_loss = self.pred_loss(pred_scores, pred_targets) / len(mol_batch)
         _,preds = torch.max(pred_scores, dim=1)
@@ -175,10 +178,10 @@ class JTNNDecoder(nn.Module):
         stop_hiddens = torch.cat(stop_hiddens, dim=0)
         stop_vecs = nn.ReLU()(self.U(stop_hiddens))
         stop_scores = self.U_s(stop_vecs).squeeze()
-        stop_targets = create_var(torch.Tensor(stop_targets))
+        stop_targets = create_var(torch.Tensor(stop_targets), use_cuda=self.use_cuda)
         
         stop_loss = self.stop_loss(stop_scores, stop_targets) / len(mol_batch)
-        stops = torch.ge(stop_scores, 0).float()
+        stops = torch.ge(stop_scores, 0.5).float()
         stop_acc = torch.eq(stops, stop_targets).float()
         stop_acc = torch.sum(stop_acc) / stop_targets.nelement()
 
@@ -186,8 +189,8 @@ class JTNNDecoder(nn.Module):
     
     def decode(self, mol_vec, prob_decode):
         stack,trace = [],[]
-        init_hidden = create_var(torch.zeros(1,self.hidden_size))
-        zero_pad = create_var(torch.zeros(1,1,self.hidden_size))
+        init_hidden = create_var(torch.zeros(1,self.hidden_size), use_cuda=self.use_cuda)
+        zero_pad = create_var(torch.zeros(1,1,self.hidden_size), use_cuda=self.use_cuda)
 
         #Root Prediction
         root_hidden = torch.cat([init_hidden, mol_vec], dim=1)
@@ -203,7 +206,7 @@ class JTNNDecoder(nn.Module):
 
         all_nodes = [root]
         h = {}
-        for step in xrange(MAX_DECODE_LEN):
+        for step in range(MAX_DECODE_LEN):
             node_x,fa_slot = stack[-1]
             cur_h_nei = [ h[(node_y.idx,node_x.idx)] for node_y in node_x.neighbors ]
             if len(cur_h_nei) > 0:
@@ -211,7 +214,7 @@ class JTNNDecoder(nn.Module):
             else:
                 cur_h_nei = zero_pad
 
-            cur_x = create_var(torch.LongTensor([node_x.wid]))
+            cur_x = create_var(torch.LongTensor([node_x.wid]), use_cuda=self.use_cuda)
             cur_x = self.embedding(cur_x)
 
             #Predict stop
@@ -299,7 +302,7 @@ def have_slots(fa_slots, ch_slots):
 
     if len(matches) == 0: return False
 
-    fa_match,ch_match = zip(*matches)
+    fa_match,ch_match = list(zip(*matches))
     if len(set(fa_match)) == 1 and 1 < len(fa_slots) <= 2: #never remove atom from ring
         fa_slots.pop(fa_match[0])
     if len(set(ch_match)) == 1 and 1 < len(ch_slots) <= 2: #never remove atom from ring

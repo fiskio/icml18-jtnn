@@ -1,9 +1,8 @@
 import torch
 import torch.nn as nn
 import rdkit.Chem as Chem
-import torch.nn.functional as F
-from nnutils import *
-from chemutils import get_mol
+from .nnutils import *
+from .chemutils import get_mol
 
 ELEM_LIST = ['C', 'N', 'O', 'S', 'F', 'Si', 'P', 'Cl', 'Br', 'Mg', 'Na', 'Ca', 'Fe', 'Al', 'I', 'B', 'K', 'Se', 'Zn', 'H', 'Cu', 'Mn', 'unknown']
 
@@ -14,7 +13,7 @@ MAX_NB = 6
 def onek_encoding_unk(x, allowable_set):
     if x not in allowable_set:
         x = allowable_set[-1]
-    return map(lambda s: x == s, allowable_set)
+    return list([x == s for s in allowable_set])
 
 def atom_features(atom):
     return torch.Tensor(onek_encoding_unk(atom.GetSymbol(), ELEM_LIST) 
@@ -70,11 +69,11 @@ def mol2graph(mol_batch):
     agraph = torch.zeros(total_atoms,MAX_NB).long()
     bgraph = torch.zeros(total_bonds,MAX_NB).long()
 
-    for a in xrange(total_atoms):
+    for a in range(total_atoms):
         for i,b in enumerate(in_bonds[a]):
             agraph[a,i] = b
 
-    for b1 in xrange(1, total_bonds):
+    for b1 in range(1, total_bonds):
         x,y = all_bonds[b1]
         for i,b2 in enumerate(in_bonds[x]):
             if all_bonds[b2][0] != y:
@@ -84,7 +83,7 @@ def mol2graph(mol_batch):
 
 class MPN(nn.Module):
 
-    def __init__(self, hidden_size, depth):
+    def __init__(self, hidden_size, depth, use_cuda):
         super(MPN, self).__init__()
         self.hidden_size = hidden_size
         self.depth = depth
@@ -92,18 +91,19 @@ class MPN(nn.Module):
         self.W_i = nn.Linear(ATOM_FDIM + BOND_FDIM, hidden_size, bias=False)
         self.W_h = nn.Linear(hidden_size, hidden_size, bias=False)
         self.W_o = nn.Linear(ATOM_FDIM + hidden_size, hidden_size)
+        self.use_cuda=use_cuda
 
     def forward(self, mol_graph):
         fatoms,fbonds,agraph,bgraph,scope = mol_graph
-        fatoms = create_var(fatoms)
-        fbonds = create_var(fbonds)
-        agraph = create_var(agraph)
-        bgraph = create_var(bgraph)
+        fatoms = create_var(fatoms, use_cuda=self.use_cuda)
+        fbonds = create_var(fbonds, use_cuda=self.use_cuda)
+        agraph = create_var(agraph, use_cuda=self.use_cuda)
+        bgraph = create_var(bgraph, use_cuda=self.use_cuda)
 
         binput = self.W_i(fbonds)
         message = nn.ReLU()(binput)
 
-        for i in xrange(self.depth - 1):
+        for i in range(self.depth - 1):
             nei_message = index_select_ND(message, 0, bgraph)
             nei_message = nei_message.sum(dim=1)
             nei_message = self.W_h(nei_message)

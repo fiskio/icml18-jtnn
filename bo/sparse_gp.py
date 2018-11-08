@@ -2,12 +2,12 @@
 # This class represents a node within the network
 #
 
-from __future__ import print_function
+
 
 import theano
 import theano.tensor as T
 
-from sparse_gp_theano_internal import *
+from .sparse_gp_theano_internal import *
 
 import scipy.stats    as sps
 import scipy.optimize as spo
@@ -33,7 +33,7 @@ def global_optimization(grid, lower, upper, function_grid, function_scalar, func
         gradient_value = function_scalar_gradient(X).flatten()
         return np.float(value), gradient_value.astype(np.float)
 
-    lbfgs_bounds = zip(lower.tolist(), upper.tolist())
+    lbfgs_bounds = list(zip(lower.tolist(), upper.tolist()))
     x_optimal, y_opt, opt_info = spo.fmin_l_bfgs_b(objective, X_initial, bounds = lbfgs_bounds, iprint = 0, maxiter = 150)
     x_optimal = x_optimal.reshape((1, grid.shape[ 1 ]))
 
@@ -202,7 +202,7 @@ class SparseGP:
         self.original_training_targets.set_value(training_targets[ selected_points, : ])
 
         print('Initializing network')
-	sys.stdout.flush()
+        sys.stdout.flush()
         self.setForTraining()
         self.initialize()
 
@@ -215,7 +215,7 @@ class SparseGP:
         all_params = self.get_params()
 
         print('Compiling adam updates')
-	sys.stdout.flush()
+        sys.stdout.flush()
 
         process_minibatch_adam = theano.function([ X, Z, y ], -e, updates = adam_theano(-e, all_params, learning_rate), \
             givens = { self.input_means: X, self.input_vars: Z, self.original_training_targets: y })

@@ -1,13 +1,26 @@
+import shutil
+
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
 
-def create_var(tensor, requires_grad=None):
-    if requires_grad is None:
-        return Variable(tensor).cuda()
-    else:
-        return Variable(tensor, requires_grad=requires_grad).cuda()
+def save_checkpoint(state, is_best=False, filename='checkpoint.pth.tar'):
+    torch.save(state, filename)
+    if is_best:
+        shutil.copyfile(filename, 'model_best.pth.tar')
 
+def create_var(tensor, requires_grad=None, use_cuda=False):
+    if requires_grad is None:
+        if use_cuda:
+            return Variable(tensor).cuda()
+        else:
+            return Variable(tensor)
+    else:
+        if use_cuda:
+            return Variable(tensor, requires_grad=requires_grad).cuda()
+        else:
+            return Variable(tensor, requires_grad=requires_grad)
+            
 def index_select_ND(source, dim, index):
     index_size = index.size()
     suffix_dim = source.size()[1:]
@@ -31,5 +44,6 @@ def GRU(x, h_nei, W_z, W_r, U_r, W_h):
     pre_h = nn.Tanh()(W_h(h_input))
     new_h = (1.0 - z) * sum_h + z * pre_h
     return new_h
+
 
 
