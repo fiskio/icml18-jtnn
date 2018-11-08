@@ -11,7 +11,6 @@ setup(name='jtnn',
           'networkx==2.1',
           'scipy==1.1.0',
           'tqdm==4.26.0',
-          'fcd'
       ],
       python_requires='>=3.6',
       extras_require={
