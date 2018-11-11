@@ -4,7 +4,7 @@ from collections import deque
 from .mol_tree import Vocab, MolTree
 from .nnutils import create_var, GRU
 
-MAX_NB = 16
+MAX_NB = 14
 
 class JTNNEncoder(nn.Module):
 
@@ -54,10 +54,10 @@ class JTNNEncoder(nn.Module):
                     h_nei.append(h[(z,x)])
 
                 pad_len = MAX_NB - len(h_nei)
-                print(pad_len)
+                # print(pad_len)
                 h_nei.extend([padding] * pad_len)
                 cur_h_nei.extend(h_nei)
-            print(len(cur_h_nei))
+            # print(len(cur_h_nei))
             cur_x = create_var(torch.LongTensor(cur_x), use_cuda=self.use_cuda)
             cur_x = self.embedding(cur_x)
             cur_h_nei = torch.cat(cur_h_nei, dim=0).view(-1,MAX_NB,self.hidden_size)
