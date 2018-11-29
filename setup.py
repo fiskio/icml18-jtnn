@@ -1,14 +1,13 @@
 from setuptools import setup
 
 setup(name='jtnn',
-      version='0.1.1',
-      url='https://github.com/maxmed/icml18-jtnn',
+      version='0.1.2',
       license='MIT',
       packages=['jtnn', 'jtnn.bo', 'jtnn.jtnn', 'jtnn.molvae', 'jtnn.molopt'],
       install_requires=[
           'joblib==0.12.5',
           'numpy==1.15.2',
-          'torch==0.3.1',
+          'torch==0.4.1',
           'networkx==2.1',
           'scipy==1.1.0',
           'tqdm==4.26.0',
@@ -18,4 +17,5 @@ setup(name='jtnn',
           'rdkit': ['rdkit>=2018.09.1.0'],
       },
       zip_safe=True,
-      )
+)
+

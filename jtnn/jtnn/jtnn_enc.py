@@ -4,7 +4,7 @@ from collections import deque
 from .mol_tree import Vocab, MolTree
 from .nnutils import create_var, GRU
 
-MAX_NB = 16
+MAX_NB = 8
 
 class JTNNEncoder(nn.Module):
 
@@ -25,6 +25,7 @@ class JTNNEncoder(nn.Module):
         self.W_h = nn.Linear(2 * hidden_size, hidden_size)
         self.W = nn.Linear(2 * hidden_size, hidden_size)
         self.use_cuda = use_cuda
+
     def forward(self, root_batch):
         orders = []
         for root in root_batch:
@@ -50,9 +51,10 @@ class JTNNEncoder(nn.Module):
                 h_nei = []
                 for node_z in node_x.neighbors:
                     z = node_z.idx
-                    if z == y: continue
-                    h_nei.append(h[(z,x)])
+                    if z == y:
+                        continue
 
+                h_nei = h_nei[:MAX_NB]
                 pad_len = MAX_NB - len(h_nei)
                 # print(pad_len)
                 h_nei.extend([padding] * pad_len)

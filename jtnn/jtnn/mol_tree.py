@@ -80,9 +80,14 @@ class MolTreeNode(object):
             self.cands = []
             self.cand_mols = []
 
+
 class MolTree(object):
 
     def __init__(self, smiles):
+        if smiles is None or smiles == '':
+            print('SMILES was empty! falling back to carbon')
+            smiles = 'C'
+
         self.smiles = smiles
         self.mol = get_mol(smiles)
 

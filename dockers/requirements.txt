@@ -1,0 +1,3 @@
+http://download.pytorch.org/whl/cu90/torch-0.3.1-cp36-cp36m-linux_x86_64.whl
+git+https://github.com/mkusner/grammarVAE.git#egg=theano-bad&subdirectory=Theano-master
+git+https://github.com/fiskio/icml18-jtnn.git#egg=jtnn

@@ -6,14 +6,19 @@ class MoleculeDataset(Dataset):
 
     def __init__(self, data_file):
         with open(data_file) as f:
-            self.data = [line.strip("\r\n ").split()[0] for line in f]
+            # self.data = [line.strip("\r\n ").split()[0] for line in f]
+            self.data = [line.strip() for line in f]
 
     def __len__(self):
         return len(self.data)
     
     def __getitem__(self, idx):
         smiles = self.data[idx]
-        mol_tree = MolTree(smiles)
+        try:
+            mol_tree = MolTree(smiles)
+        except:
+            print('Caught exception, naughty SMILES is now C')
+            mol_tree = MolTree('C')
         mol_tree.recover()
         mol_tree.assemble()
         return mol_tree
@@ -23,7 +28,8 @@ class PropDataset(Dataset):
     def __init__(self, data_file, prop_file):
         self.prop_data = np.loadtxt(prop_file)
         with open(data_file) as f:
-            self.data = [line.strip("\r\n ").split()[0] for line in f]
+            # self.data = [line.strip("\r\n ").split()[0] for line in f]
+            self.data = [line.strip() for line in f]
 
     def __len__(self):
         return len(self.data)
@@ -34,4 +40,3 @@ class PropDataset(Dataset):
         mol_tree.recover()
         mol_tree.assemble()
         return mol_tree, self.prop_data[idx]
-

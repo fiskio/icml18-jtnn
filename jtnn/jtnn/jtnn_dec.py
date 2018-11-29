@@ -5,7 +5,7 @@ from .nnutils import create_var, GRU
 from .chemutils import enum_assemble
 import copy
 
-MAX_NB = 16
+MAX_NB = 8
 MAX_DECODE_LEN = 100
 
 class JTNNDecoder(nn.Module):
@@ -87,12 +87,14 @@ class JTNNDecoder(nn.Module):
             for node_x,real_y,_ in prop_list:
                 #Neighbors for message passing (target not included)
                 cur_nei = [h[(node_y.idx,node_x.idx)] for node_y in node_x.neighbors if node_y.idx != real_y.idx]
+                cur_nei = cur_nei[:MAX_NB]
                 pad_len = MAX_NB - len(cur_nei)
                 cur_h_nei.extend(cur_nei)
                 cur_h_nei.extend([padding] * pad_len)
 
                 #Neighbors for stop prediction (all neighbors)
                 cur_nei = [h[(node_y.idx,node_x.idx)] for node_y in node_x.neighbors]
+                cur_nei = cur_nei[:MAX_NB]
                 pad_len = MAX_NB - len(cur_nei)
                 cur_o_nei.extend(cur_nei)
                 cur_o_nei.extend([padding] * pad_len)

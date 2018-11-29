@@ -1,4 +1,4 @@
-http://download.pytorch.org/whl/cu90/torch-0.3.1-cp36-cp36m-linux_x86_64.whl
+http://download.pytorch.org/whl/cu90/torch-0.4.1-cp36-cp36m-linux_x86_64.whl
 networkx==2.1
 scipy==1.1.0
 numpy==1.15.2
